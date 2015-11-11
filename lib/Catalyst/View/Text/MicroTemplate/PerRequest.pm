@@ -421,6 +421,6 @@ the same terms as Perl itself.
 
 =cut
 
-__TODO__
+__END__
 
 how to document (and do we need changes for) default method namespace lookup

@@ -8,13 +8,13 @@ use Test::Most;
 
   has [qw/first_name last_name age/] => (is=>'rw');
 
-  sub TO_JSON {
+  sub TO_HASH {
     my $self = shift;
-    return {
+    return (
       time => scalar(localtime),
       fname => $self->first_name,
       lname => $self->last_name,
-      age => $self->age };
+      age => $self->age );
   }
 
   sub ACCEPT_CONTEXT {
@@ -70,7 +70,7 @@ use Test::Most;
 
     $c->view->handle_process_error(sub {
       my ($view, $err) = @_;
-      $view->template('500');
+      $view->template('503');
       $view->detach_service_unavailable({ error => "$err"});
     });
 
@@ -122,65 +122,31 @@ use Catalyst::Test 'MyApp';
 {
   ok my ($res, $c) = ctx_request( '/example' );
   is $res->code, 200;
-
-  warn $res->content;
+  like $res->content, qr/\$a:1/;
 }
-
-done_testing;
-
-__END__
 
 {
   ok my ($res, $c) = ctx_request( '/root/a/b' );
   is $res->code, 201;
-  
-  my %json = %{ decode_json $res->content };
-
-  is $json{a}, 1;
-  is $json{b}, 2;
-  is $json{c}, 3;
-  is $json{y}, 1;
-  is $json{z}, 1;
+  like $res->content, qr/\$a:1,\$b:2,\$c:3,\$y:1,\$z:1/;  
 }
 
 {
   ok my ($res, $c) = ctx_request( '/custom' );
   is $res->code, 200;
-  
-  my %json = %{ decode_json $res->content };
-
-  is $json{fname}, 'john';
-  is $json{lname}, 'nap';
-  is $json{age}, 44;
-  ok $json{time};
-}
-
-{
-  ok my ($res, $c) = ctx_request( '/object' );
-  is $res->code, 200;
-  
-  my %json = %{ decode_json $res->content };
-
-  is $json{fname}, 'M';
-  is $json{lname}, 'P';
-  is $json{age}, 20;
-  ok $json{time};
+  like $res->content, qr/\$fname:john,\$age:44/;
 }
 
 {
   ok my ($res, $c) = ctx_request( '/error_global' );
   is $res->code, 500;
-  
-  my %json = %{ decode_json $res->content };
-  ok $json{error};
+  like $res->content, qr/could not find template file: error_global\.mt /;
 }
 
 {
   ok my ($res, $c) = ctx_request( '/error_local' );
   is $res->code, 503;
-  
-  my %json = %{ decode_json $res->content };
-  ok $json{error};
+  like $res->content, qr/could not find template file: error_local\.mt /;
 }
 
 done_testing;

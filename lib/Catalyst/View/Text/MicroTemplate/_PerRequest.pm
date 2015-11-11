@@ -39,7 +39,7 @@ sub template {
       Scalar::Util::blessed($value) &&
       $value->isa('Catalyst::Action')
     ) {
-      $value = $value->reverse;
+      $value = "$value";
     }
     $self->{template} = $value;
   }
@@ -49,7 +49,7 @@ sub template {
 sub default_template {
   my $self = shift;
   return $self->{ctx}->stash->{template} 
-    || $self->{ctx}->action->reverse;
+    || "${\$self->{ctx}->action}";
 }
 
 sub res { return shift->response(@_) }
