@@ -173,6 +173,15 @@ setting for this.)
 It also generates some local response helpers.  You may or may not find this
 approach leads to cleaner code.
 
+A similar style view tht produces JSON is L<Catalyst::View::JSON::PerRequest>.
+In fact this was written so that I could have a view that did HTML with an identical
+interface as that JSON view, to make it easier in situations where I want to choose
+a view based on content negotiation (like when doing an API) but would like to keep
+the rest of the code the same.
+
+I consider this approach to be an interesting experiment in alternative ways to
+use Catalyst views.
+
 =head1 METHODS
 
 This view defines the following methods
@@ -185,7 +194,7 @@ action.  You can set this to a particular template name, or an $action.
 =head2 data (?$model)
 
 Used to set the view data model, and/or to called methods on it (for example
-to set attributes that will later be used in the JSON response.).
+to set attributes that will later be used in the  response.).
 
 The default is an injected model based on L<Catalyst::Model::Text::MicroTemplate::ViewData>
 which you should review for basic usage.  I recommend setting it to a custom
@@ -342,8 +351,8 @@ must setup a new, valid response.  For example:
     use Catalyst;
 
     MyApp->config(
-      default_view =>'JSON',
-      'View::JSON' => {
+      default_view =>'HTML',
+      'View::HTML' => {
         handle_process_error => sub {
           my ($view, $err) = @_;
           $view->template('500bad_request'); # You need to create this template...
@@ -378,8 +387,8 @@ error handler, should you wish to use something consistent and reasonably
 valid.  Example:
 
     MyApp->config(
-      default_view =>'JSON',
-      'View::JSON' => {
+      default_view =>'HTML',
+      'View::HtML' => {
         handle_encode_error => \&Catalyst::View::Text::MicroTemplate::HANDLE_PROCESS_ERROR,
       },
     );
