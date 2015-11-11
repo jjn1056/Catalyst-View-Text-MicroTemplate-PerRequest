@@ -1,0 +1,168 @@
+package Catalyst::View::Text::MicroTemplate::_PerRequest;
+
+use HTTP::Status;
+use Scalar::Util;
+use Catalyst::Utils;
+
+sub data {
+  my ($self, $data) = @_;
+  if($data) {
+    if($self->{data}) {
+      die "Can't set view data attribute if its already set";
+    } else {
+      $data = $self->{ctx}->model($data) unless ref $data;
+      return $self->{data} = $data;
+    }
+  } else {
+    return $self->{data} ||= do {
+      my $default_view_model = $self->{parent}->default_view_model;
+      $default_view_model = $self->{ctx}->model($default_view_model)
+        unless ref $default_view_model;
+      $default_view_model;
+    };
+  }
+}
+
+sub handle_process_error {
+  my ($self, $value) = @_;
+  if(defined $value) {
+    $self->{handle_process_error} = $value;
+  }
+  return $self->{handle_process_error};
+}
+
+sub template {
+  my ($self, $value) = @_;
+  
+  if(defined $value) {
+    if(
+      Scalar::Util::blessed($value) &&
+      $value->isa('Catalyst::Action')
+    ) {
+      $value = $value->reverse;
+    }
+    $self->{template} = $value;
+  }
+  return $self->{template} || $self->default_template;
+}
+
+sub default_template {
+  my $self = shift;
+  return $self->{ctx}->stash->{template} 
+    || $self->{ctx}->action->reverse;
+}
+
+sub res { return shift->response(@_) }
+sub response {
+  my ($self, @proto) = @_;
+  my ($status, @headers) = ();
+  
+  if(ref \$proto[0] eq 'SCALAR') {
+    $status = shift @proto;
+  } else {
+    $status = 200;
+  }
+
+  if(
+    scalar(@proto) &&
+    ref $proto[$#proto] eq 'HASH'
+  ) {
+    my $var = pop @proto;
+    foreach my $key (keys %$var) {
+      $self->data->$key($var->{$key});
+    }
+  }
+
+  if(
+    scalar(@proto) &&
+    Scalar::Util::blessed($proto[$#proto])
+  ) {
+    my $obj = pop @proto;
+    $self->data($obj);
+  }
+
+  if(@proto) {
+    @headers = @{$proto[0]};
+  }
+
+  if($self->{ctx}->debug) {
+    #my $name = Catalyst::Utils::class2classsuffix($self->{parent}->catalyst_component_name);
+    #$self->{ctx}->stats->profile(begin => "=> ${name}->send($status)")
+  }
+
+  my $res = $self->{ctx}->response;
+  my $out = $self->render($self->template, $self->data);
+
+  $res->headers->push_headers(@headers) if @headers;
+  $res->status($status) unless $res->status != 200; # Catalyst default is 200...
+  $res->content_type($self->{parent}->content_type) unless $res->content_type;
+  $res->body($out) unless $res->has_body;
+}
+
+sub render {
+  my ($self, $template, @data) = @_;
+  my $out = eval {
+
+    $self->{mt}->{prepend} .= 'my $a = 1;';
+   
+    $self->{mt}->render($template, @data);
+  } || do {
+    $self->{ctx}->log->error("Can't render template '$template', $@") if $self->{ctx}->debug;
+    if(my $cb = $self->handle_process_error) {
+      delete $self->{data}; # Clear out any existing data since its not valid
+      delete $self->{handle_process_error};
+      return $cb->($self, $@);
+    } else {
+      # Bubble up the unhandled error
+      die $@;
+    }
+  };
+
+
+  return $out;
+}
+
+sub process {
+  my ( $self, $c ) = @_;
+  $self->response;
+}
+
+# Send Helpers.
+foreach my $helper( grep { $_=~/^http/i} @HTTP::Status::EXPORT_OK) {
+  my $subname = lc $helper;
+  $subname =~s/http_//i;  
+  eval "sub $subname { return shift->response(HTTP::Status::$helper,\@_) }";
+  eval "sub detach_$subname { my \$self=shift; \$self->response(HTTP::Status::$helper,\@_); \$self->{ctx}->detach }";
+}
+
+1;
+
+=head1 NAME
+
+Catalyst::View::Text::MicroTemplate::_PerRequest - Private object for Text::MicroTemplate views that own data
+
+=head1 SYNOPSIS
+
+    No user servicable bits
+
+=head1 DESCRIPTION
+
+See L<Catalyst::View::Text::MicroTemplate::PerRequest> for details.
+
+=head1 SEE ALSO
+
+L<Catalyst>, L<Catalyst::View>, L<Catalyst::View::Text::MicroTemplate::PerRequest>,
+L<HTTP::Status>
+
+=head1 AUTHOR
+ 
+John Napiorkowski L<email:jjnapiork@cpan.org>
+  
+=head1 COPYRIGHT & LICENSE
+ 
+Copyright 2015, John Napiorkowski L<email:jjnapiork@cpan.org>
+ 
+This library is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
+
+=cut
