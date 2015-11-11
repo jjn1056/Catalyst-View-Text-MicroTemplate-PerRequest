@@ -11,6 +11,8 @@ sub build_per_context_instance {
   return $self->new(%args);
 }
 
+sub TO_HASH { return shift->elements }
+
 sub AUTOLOAD {
   my ($self, @args) = @_;
   my $key = our $AUTOLOAD;

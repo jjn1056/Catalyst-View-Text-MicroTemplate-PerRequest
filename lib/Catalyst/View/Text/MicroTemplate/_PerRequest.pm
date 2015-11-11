@@ -86,12 +86,26 @@ sub response {
   }
 
   if($self->{ctx}->debug) {
-    #my $name = Catalyst::Utils::class2classsuffix($self->{parent}->catalyst_component_name);
-    #$self->{ctx}->stats->profile(begin => "=> ${name}->send($status)")
+    my $name = Catalyst::Utils::class2classsuffix($self->{parent}->catalyst_component_name);
+    $self->{ctx}->stats->profile(begin => "=> ${name}->response($status)")
   }
 
   my $res = $self->{ctx}->response;
-  my $out = $self->render($self->template, $self->data);
+
+  my $out;
+  MT: {
+    # Localize this so we don't clobber the global
+    local $self->{mt}->{template_args};
+    # Allow the data model to provide named args
+    my %args = $self->data->can('TO_HASH') ? $self->data->TO_HASH : ();
+    # Allow the view object to provide named args as well
+    if(my $extra_cb = $self->{parent}->can('extra_template_args')) {
+      %args = ($extra_cb->($self->{parent}, $self->{ctx}, $self), %args);
+    }
+
+    $self->{mt}->template_args({ c => $self->{ctx}, %args});
+    $out = $self->render($self->template, $self->data);
+  }
 
   $res->headers->push_headers(@headers) if @headers;
   $res->status($status) unless $res->status != 200; # Catalyst default is 200...
@@ -101,23 +115,22 @@ sub response {
 
 sub render {
   my ($self, $template, @data) = @_;
-  my $out = eval {
-
-    $self->{mt}->{prepend} .= 'my $a = 1;';
-   
+  my $out = eval {   
     $self->{mt}->render($template, @data);
   } || do {
     $self->{ctx}->log->error("Can't render template '$template', $@") if $self->{ctx}->debug;
     if(my $cb = $self->handle_process_error) {
       delete $self->{data}; # Clear out any existing data since its not valid
-      delete $self->{handle_process_error};
+      delete $self->{handle_process_error}; # Avoid recursion if your error handler is iself bad
+      $self->{ctx}->log->info("Invoking process error callback") if $self->{ctx}->debug;
       return $cb->($self, $@);
     } else {
       # Bubble up the unhandled error
+      $self->{ctx}->log->info("Rethrowing template error since there's no 'handle_process_error' defined")
+        if $self->{ctx}->debug;
       die $@;
     }
   };
-
 
   return $out;
 }

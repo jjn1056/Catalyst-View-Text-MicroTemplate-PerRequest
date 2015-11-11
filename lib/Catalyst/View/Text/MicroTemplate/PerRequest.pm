@@ -48,8 +48,9 @@ has mt => (
 
 sub HANDLE_PROCESS_ERROR {
   my ($view, $err) = @_;
+  my $template = $view->template;
   $view->template('500');
-  $view->detach_internal_server_error({ error => "$err"});
+  $view->detach_internal_server_error({ error => "$err", template => $template});
 }
 
 has handle_process_error => (
