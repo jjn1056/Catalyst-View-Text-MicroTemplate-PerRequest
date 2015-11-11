@@ -100,7 +100,11 @@ sub response {
     my %args = $self->data->can('TO_HASH') ? $self->data->TO_HASH : ();
     # Allow the view object to provide named args as well
     if(my $extra_cb = $self->{parent}->can('extra_template_args')) {
-      %args = ($extra_cb->($self->{parent}, $self->{ctx}, $self), %args);
+      %args = ($extra_cb->($self->{parent}, $self, $self->{ctx}), %args);
+    }
+    # Merge stash args if requested
+    if($self->{parent}->merge_stash) {
+      %args = (%args, %{$self->{ctx}->stash});
     }
 
     $self->{mt}->template_args({ c => $self->{ctx}, %args});
