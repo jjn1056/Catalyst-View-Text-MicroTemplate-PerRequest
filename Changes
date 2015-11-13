@@ -1,4 +1,8 @@
 # This file documents the revision history for Perl extension Catalyst-View-Text-MicroTemplate-PerRequest 
 
+0.002 - 2015-11-13
+  - Fixed an issue where if the value of an HTTP header happens to be
+    an object we don't think that object is the data to render.
+
 0.001 - 2015-11-10
   - First Release 
