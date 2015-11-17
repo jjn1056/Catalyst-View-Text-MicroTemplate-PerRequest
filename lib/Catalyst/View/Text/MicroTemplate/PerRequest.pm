@@ -4,7 +4,7 @@ use Moo;
 use CatalystX::InjectComponent;
 use Catalyst::View::Text::MicroTemplate::_PerRequest;
 
-our $VERSION = 0.002;
+our $VERSION = 0.003;
 our $DEFAULT_MT_CLASS = 'Text::MicroTemplate::Extended';
 our $DEFAULT_VIEW_MODEL = 'Text::MicroTemplate::ViewData';
 

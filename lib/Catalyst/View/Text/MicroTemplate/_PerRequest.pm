@@ -82,7 +82,7 @@ sub response {
   }
 
   if(@proto) {
-    @headers = @{$proto[0]};
+    @headers = @proto;
   }
 
   if($self->{ctx}->debug) {
@@ -111,7 +111,7 @@ sub response {
     $out = $self->render($self->template, $self->data);
   }
 
-  $res->headers->push_headers(@headers) if @headers;
+  $res->headers->push_header(@headers) if @headers;
   $res->status($status) unless $res->status != 200; # Catalyst default is 200...
   $res->content_type($self->{parent}->content_type) unless $res->content_type;
   $res->body($out) unless $res->has_body;
