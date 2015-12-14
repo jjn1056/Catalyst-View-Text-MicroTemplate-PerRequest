@@ -1,5 +1,10 @@
 # This file documents the revision history for Perl extension Catalyst-View-Text-MicroTemplate-PerRequest 
 
+0.004 - 2015-12-14
+  - more control on how to choose a default template.  You can now define
+    a callback globally or at request time (in the actions) that is used
+    to determine the default template name.
+
 0.003 - 2015-11-16
   - Fixed another issue with adding headers
 

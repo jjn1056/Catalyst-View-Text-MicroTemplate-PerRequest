@@ -43,13 +43,23 @@ sub template {
     }
     $self->{template} = $value;
   }
-  return $self->{template} || $self->default_template;
+  return $self->{template} || $self->template_factory;
 }
 
-sub default_template {
-  my $self = shift;
-  return $self->{ctx}->stash->{template} 
-    || "${\$self->{ctx}->action}";
+sub template_factory {
+  my $self = shift; 
+
+  if(defined $_[0]) {
+    die 'The value must be a subroutine reference'
+      unless ref($_[0]) eq 'CODE';
+    $self->{template_factory} = $_[0];
+  }
+
+  unless(exists $self->{template_factory}) {
+    $self->{template_factory} = $self->{parent}->default_template_factory;
+  }
+
+  return $self->{template_factory}->($self, $self->{ctx});
 }
 
 sub res { return shift->response(@_) }
@@ -91,7 +101,10 @@ sub response {
   }
 
   my $res = $self->{ctx}->response;
-
+  $res->headers->push_header(@headers) if @headers;
+  $res->status($status) unless $res->status != 200; # Catalyst default is 200...
+  $res->content_type($self->{parent}->content_type) unless $res->content_type;
+  
   my $out;
   MT: {
     # Localize this so we don't clobber the global
@@ -111,9 +124,6 @@ sub response {
     $out = $self->render($self->template, $self->data);
   }
 
-  $res->headers->push_header(@headers) if @headers;
-  $res->status($status) unless $res->status != 200; # Catalyst default is 200...
-  $res->content_type($self->{parent}->content_type) unless $res->content_type;
   $res->body($out) unless $res->has_body;
 }
 

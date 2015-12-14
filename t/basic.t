@@ -97,6 +97,18 @@ use Test::Most;
       });
   }
 
+  sub default_template :Chained(root) Args(0) {
+    my ($self, $c) = @_;
+    $c->view->template_factory(sub {
+      my ($view, $ctx) = @_;
+      return $ctx->response->status > 299 ?
+        "${\$ctx->action}_${\$ctx->res->status}" :
+          "${\$ctx->action}";
+    });
+
+    $c->view->bad_request({message=>"bad bad bad"});
+  }
+
   $INC{'MyApp/Controller/Root.pm'} = __FILE__;
 
   package MyApp;
@@ -147,6 +159,12 @@ use Catalyst::Test 'MyApp';
   ok my ($res, $c) = ctx_request( '/error_local' );
   is $res->code, 503;
   like $res->content, qr/could not find template file: error_local\.mt /;
+}
+
+{
+  ok my ($res, $c) = ctx_request( '/root/default_template' );
+  is $res->code, 400;
+  like $res->content, qr/bad bad bad/;
 }
 
 done_testing;

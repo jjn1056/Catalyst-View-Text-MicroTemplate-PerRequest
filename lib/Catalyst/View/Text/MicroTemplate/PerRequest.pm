@@ -4,7 +4,7 @@ use Moo;
 use CatalystX::InjectComponent;
 use Catalyst::View::Text::MicroTemplate::_PerRequest;
 
-our $VERSION = 0.003;
+our $VERSION = 0.004;
 our $DEFAULT_MT_CLASS = 'Text::MicroTemplate::Extended';
 our $DEFAULT_VIEW_MODEL = 'Text::MicroTemplate::ViewData';
 
@@ -68,13 +68,24 @@ has default_view_model => (
 
 has mt_class => (
   is=>'ro',
-  require=>1,
+  required=>1,
   default=>sub {
     return $DEFAULT_MT_CLASS;
   });
 
 has mt_init_args => (is=>'ro', required=>1, default=>sub { +{} });
 has app => (is=>'ro');
+
+has default_template_factory => (
+  is=>'ro',
+  required=>1,
+  default=>sub {
+    return sub {
+      my ($view, $ctx) = @_;
+      return $ctx->stash->{template}
+        || "${\$ctx->action}";
+    };
+  });
 
 sub COMPONENT {
   my ($class, $app, $args) = @_;
@@ -167,13 +178,18 @@ and L<Text::MicroTemplate> for more on how the template engine works.
 It differs from other L<Catalyst> views on CPAN (including L<Catayst::View::Text::MicroTemplate>)
 In that it is a 'per request view' that lets you define a view owned data model
 for passing information to the view.  You may find this a better solution than
-using the stash although you may also use the stash if you use (there's a template
+using the stash although you may also use the stash if you like (there's a template
 setting for this.)
 
 It also generates some local response helpers.  You may or may not find this
-approach leads to cleaner code.
+approach leads to cleaner code.  Lastly we allow you to more easily override
+how we generate a default template name.  In general I consider this view to be
+a somewhat experimental approach to solve some common problems that have really irked
+me about the commonly used approach to views in L<Catalyst>  However I do use this in
+product so I commit to making this stable and safe (just this is not the official proscribed
+way so you might find some learning curve).
 
-A similar style view tht produces JSON is L<Catalyst::View::JSON::PerRequest>.
+A similar style view that produces JSON is L<Catalyst::View::JSON::PerRequest>.
 In fact this was written so that I could have a view that did HTML with an identical
 interface as that JSON view, to make it easier in situations where I want to choose
 a view based on content negotiation (like when doing an API) but would like to keep
@@ -256,6 +272,44 @@ used as a target for $c->forward.  This is mostly here for compatibility with so
 existing methodology.  For example allows using this view with the Renderview action
 class (common practice).   I'd consider it a depracated approach, personally.
 
+=head1 template_factory
+
+Inherits a default value from L</default_template_factory>.
+
+This is a subroutine reference that is used to generate a template name when you don't
+set one via the L</template> setter (this is the common case, to let the view make
+the template choice for you).  The common way to do this is to choose a template name
+base on the terminal action name, for example here is the default setting for this
+attribute:
+
+    return sub {
+      my ($view, $ctx) = @_;
+      return $ctx->stash->{template} 
+        || "${\$ctx->action}";      
+    };
+
+The subroutine reference will be called with two arguments, the view instance object
+and the current context object.  This should allow you to experiment with new ideas
+in choosing a default.  For example I often find it valuable to distinguish templates
+not just based on the action path, but also on the response status.  That way I can
+set a default based on something like:
+
+    return sub {
+      my ($view, $ctx) = @_;
+      return $ctx->response->status > 299 ?
+        "${\$ctx->action}_${\$ctx->res->status}" :
+          "${\$ctx->action}";
+    };
+
+That way if an action returns for various status, you can distinguish between OK and
+error or exception responses.
+
+BTW, this complication points out that it is possible that the idea of allowing a view
+to set a default template via its internal logic is suspect.  The issue here is that
+if you are seeking to write actions that can be used across different views (like an HTML
+view that needs a template and a JSON view that doesn't) you really prefer to not have
+code in your action that dictates a template choice.
+
 =head1 ATTRIBUTES
 
 This View defines the following attributes that can be set during configuration
@@ -291,6 +345,11 @@ Your template always gets an arg '$c' which is the current context. You may also
 provide per context template args by providing a method 'extra_template_args'.  The
 advantage of that approach is that method will get the context and other objects
 as arguments which makes it easier to provide context sensitive values.
+
+=head2 default_template_factory
+
+Default value for L</template_factory>.  Useful if you want a global override for
+this.
 
 =head2 macros
 
