@@ -4,7 +4,7 @@ use Moo;
 use CatalystX::InjectComponent;
 use Catalyst::View::Text::MicroTemplate::_PerRequest;
 
-our $VERSION = 0.004;
+our $VERSION = 0.005;
 our $DEFAULT_MT_CLASS = 'Text::MicroTemplate::Extended';
 our $DEFAULT_VIEW_MODEL = 'Text::MicroTemplate::ViewData';
 
@@ -123,7 +123,7 @@ sub build_per_context_instance {
 
 =head1 NAME
 
-Catalyst::View::JSON::PerRequest - JSON View that owns its data 
+Catalyst::View::Text::MicroTemplate::PerRequest - JSON View that owns its data 
 
 =head1 SYNOPSIS
 
@@ -262,9 +262,9 @@ See L<HTTP::Status> for a full list of all the status code helpers.
 
 =head2 render ($data)
 
-Given a Perl data will return the JSON encoded version.
+Given a Perl data will return a string based on the current template.
 
-    my $json = $c->view->render(@data);
+    my $html = $c->view->render(@data);
 
 =head2 process
 
@@ -482,13 +482,9 @@ John Napiorkowski L<email:jjnapiork@cpan.org>
   
 =head1 COPYRIGHT & LICENSE
  
-Copyright 2015, John Napiorkowski L<email:jjnapiork@cpan.org>
+Copyright 2016, John Napiorkowski L<email:jjnapiork@cpan.org>
  
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
-
-__END__
-
-how to document (and do we need changes for) default method namespace lookup
